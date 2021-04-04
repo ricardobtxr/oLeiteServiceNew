@@ -29,8 +29,10 @@ namespace oLeiteService.Models
         public List<Ocorrencia> ocorrencias { get; set; }
         public List<Ccs> ccsLista { get; set; }
 
-        public static readonly int DIAS_PARA_NOVA_INSEMINACAO = 30;
-        public static readonly int DIAS_PARA_NOVO_PARTO = 300;
+        public static readonly int DIAS_REPETIR_INSEMINACAO = 20;
+        public static readonly int DIAS_OBSERVACAO = 20;
+        public static readonly int DIAS_INSEMINAR_APOS_PARTO = 40;
+        public static readonly int DIAS_GESTACAO = 270;
         public static readonly int IDADE_PARA_INSEMINAR_DIAS = 600;
 
         public long diasVida
@@ -65,13 +67,14 @@ namespace oLeiteService.Models
             get
             {
                 Boolean isInseminada = false;
-                Inseminacao inseminacao = this.ultimaInseminacao;
-                if (inseminacao == null) return false;
-                if (this.ultimoParto == null || inseminacao.data.CompareTo(this.ultimoParto.data) > 0) {
-                    if (inseminacao.confirmado) {
+                Inseminacao _inseminacao = this.ultimaInseminacao;
+                if (_inseminacao == null) return false;
+                Parto ultimoParto = this.ultimoParto;
+                if (ultimoParto == null || _inseminacao.data.CompareTo(ultimoParto.data) > 0) {
+                    if (_inseminacao.confirmado) {
                         isInseminada = true;
                     }
-                    else if (inseminacao.data.CompareTo(DateTime.Now.AddDays(-DIAS_PARA_NOVA_INSEMINACAO)) > 0) {
+                    else if (_inseminacao.data.CompareTo(DateTime.Now.AddDays(-DIAS_REPETIR_INSEMINACAO)) > 0) {
                         isInseminada = true;
                     }
                 }
@@ -81,8 +84,29 @@ namespace oLeiteService.Models
 
         public Boolean temIdadeParaInseminar => (this.diasVida > IDADE_PARA_INSEMINAR_DIAS);
 
-        public Boolean isUltimoPartoAntigo => (this.ultimoParto != null
-                && this.ultimoParto.data.CompareTo(DateTime.Now.AddDays(-DIAS_PARA_NOVO_PARTO)) < 0);
+        public Boolean isUltimoPartoAntigo
+        {
+            get
+            {
+                Parto ultimoParto = this.ultimoParto;
+                return (ultimoParto != null && ultimoParto.data.CompareTo(DateTime.Now.AddDays(-DIAS_INSEMINAR_APOS_PARTO)) < 0);
+            }
+        }
+
+        public Boolean isObservacaoParto
+        {
+            get
+            {
+                Parto _ultimoParto = this.ultimoParto;
+                Inseminacao _ultimaInseminacao = this.ultimaInseminacao;
+                Boolean verificacaoPosParto = (_ultimoParto != null && _ultimoParto.data.CompareTo(DateTime.Now.AddDays(-DIAS_OBSERVACAO)) > 0);
+                Boolean verificacaoPreParto = (
+                    this.estaInseminada
+                        && _ultimaInseminacao.data.AddDays(DIAS_GESTACAO).CompareTo(DateTime.Now.AddDays(-DIAS_OBSERVACAO)) > 0);
+
+                return verificacaoPosParto || verificacaoPreParto;
+            }
+        }
 
         public Inseminacao ultimaInseminacao
         {
